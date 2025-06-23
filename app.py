@@ -3,9 +3,109 @@ import random
 import os
 import pandas as pd
 
-PASTA_VIDEOS = "videos"
+import gspread
+from google.oauth2.service_account import Credentials
 
-# ------------------- FORMULÁRIO DEMOGRÁFICO INICIAL -------------------
+# ======= CONFIG GOOGLE SHEETS ========
+SHEET_ID = "1LuLxwskv_jrwOHTRmOKKeceI7WpzeTCIauCPUwhueUU"
+SHEET_NAME = "Respostas"  # Pode mudar se quiser
+
+def get_gspread_client():
+    secrets = st.secrets["gcp_service_account"]
+    creds = Credentials.from_service_account_info(secrets, scopes=[
+        "https://www.googleapis.com/auth/spreadsheets"
+    ])
+    return gspread.authorize(creds)
+
+def salvar_no_sheets(dados_demograficos, respostas):
+    try:
+        gc = get_gspread_client()
+        sh = gc.open_by_key(SHEET_ID)
+        try:
+            worksheet = sh.worksheet(SHEET_NAME)
+        except gspread.exceptions.WorksheetNotFound:
+            worksheet = sh.add_worksheet(title=SHEET_NAME, rows="1000", cols="30")
+        # Adiciona cabeçalho se necessário
+        if worksheet.row_count == 0 or worksheet.cell(1, 1).value is None:
+            worksheet.append_row([
+                "Idade", "Sexo", "Escolaridade", "Cidade", "Renda",
+                "Vídeo", "Opções", "Resposta Usuário", "Resposta Correta", "Acertou?"
+            ])
+        for resp in respostas:
+            linha = [
+                dados_demograficos["idade"],
+                dados_demograficos["sexo"],
+                dados_demograficos["escolaridade"],
+                dados_demograficos["cidade"],
+                dados_demograficos["renda"],
+                resp["video"],
+                "; ".join(resp["opcoes"]),
+                resp["resposta_usuario"],
+                resp["resposta_certa"],
+                "Sim" if resp["correta"] else "Não"
+            ]
+            worksheet.append_row(linha)
+    except Exception as e:
+        st.warning(f"⚠️ Não foi possível salvar no Google Sheets: {e}")
+
+# ======= LISTA DE VÍDEOS ========
+PASTA_VIDEOS = "videos"
+videos = [
+    ("0101702M2Vresentful.mp4", ["Segura", "Amigável", "Magoada", "Atraente"], 3),
+    ("0101702M3Vresentful.mp4", ["Cansado", "Magoado", "Desconcentrado", "Angustiado"], 2),
+    ("0101702M8Vresentful.mp4", ["Confusa", "Modesta", "Magoada", "Piedosa"], 3),
+    ("0110401M1Vstern.mp4", ["Sério", "Calculista", "Assertivo", "Falso"], 1),
+    ("0110401M2Vstern.mp4", ["Angustiada", "Amigável", "Severa", "Rejeitada"], 3),
+    ("0110401S5Vstern.mp4", ["Atormentado", "Resignado", "Furioso", "Sério"], 4),
+    ("0201901S1Vgrave.mp4", ["Preocupado", "Desconcentrado", "Abandonado", "Resignado"], 1),
+    ("0201901S6Vgrave.mp4", ["Crítica", "Conformada", "Preocupada", "Sedutora"], 3),
+    ("0203501M4Vsubdued.mp4", ["Arrogante", "Desconcentrada", "Abatida", "Revigorada"], 3),
+    ("0203501Y2Vsubdued.mp4", ["Apática", "Abatida", "Eufórica", "Preocupada"], 2),
+    ("0305802M2Vexonerated.mp4", ["Aliviada", "Rejeitada", "Desconcentrada", "Abandonada"], 1),
+    ("0305802S4Vexonerated.mp4", ["Esgotada", "Aterrorizada", "Aliviada", "Frustrada"], 3),
+    ("0305802Y7Vexonerated.mp4", ["Emotivo", "Assertivo", "Sonhador", "Aliviado"], 4),
+    ("0601901S2Vuneasy.mp4", ["Opressiva", "Enérgica", "Inquieta", "Apática"], 3),
+    ("0601901S5Vuneasy.mp4", ["Acuado", "Despreocupado", "Inquieto", "Desnorteado"], 3),
+    ("0703001M4Vempathic.mp4", ["Atenta", "Empática", "Séria", "Conformada"], 2),
+    ("0703001S5Vempathic.mp4", ["Revigorado", "Conformado", "Bondoso", "Dissimulado"], 3),
+    ("0703001Y2Vempathic.mp4", ["Emocionada", "Insegura", "Histérica", "Empática"], 4),
+    ("0802202M8Vvibrant.mp4", ["Indiferente", "Atormentada", "Tensa", "Vibrante"], 4),
+    ("0802202Y4Vvibrant.mp4", ["Apavorada", "Vibrante", "Empática", "Oprimida"], 2),
+    ("0903302M1Vlured.mp4", ["Sério", "Comovido", "Sedutor", "Confuso"], 3),
+    ("0903302M2Vlured.mp4", ["Sedutora", "Revigorada", "Impaciente", "Amargurada"], 1),
+    ("0903302S2Vlured.mp4", ["Sedutora", "Indiferente", "Insegura", "Empática"], 1),
+    ("0903001M4Vadmiring.mp4", ["Submissa", "Encantada", "Chateada", "Irritada"], 2),
+    ("1004701M3Vsubservient.mp4", ["Tenso", "Desmotivado", "Submisso", "Amoroso"], 3),
+    ("1004701Y1Vsubservient.mp4", ["Acuado", "Conformado", "Submisso", "Despreocupado"], 3),
+    ("1101401M6Vappalled.mp4", ["Horrorizada", "Desatenta", "Sobrecarregada", "Acomodada"], 1),
+    ("1101401S5Vappalled.mp4", ["Arrogante", "Submisso", "Impiedoso", "Horrorizado"], 4),
+    ("1101401Y5Vappalled.mp4", ["Horrorizado", "Saudoso", "Retraído", "Cínico"], 1),
+    ("1202701M2Vconfronted.mp4", ["Séria", "Agradecida", "Acareada", "Angustiada"], 3),
+    ("1202701M8Vconfronted.mp4", ["Simpática", "Acareada", "Bondosa", "Acomodada"], 2),
+    ("1202701Y2Vconfronted.mp4", ["Surpresa", "Elogiosa", "Tranquila", "Fria"], 1),
+    ("1400901M2Vintimate.mp4", ["Atormentada", "Despreocupada", "Amorosa", "Insegura"], 3),
+    ("1400901Y2Vintimate.mp4", ["Firme", "Amorosa", "Agitada", "Apreensiva"], 2),
+    ("1700802M4Vinsincere.mp4", ["Desmotivada", "Falsa", "Chateada", "Fascinada"], 2),
+    ("1700802Y7Vinsincere.mp4", ["Angustiado", "Contraditório", "Disperso", "Falso"], 4),
+    ("1801301Y7Vrestless.mp4", ["Impiedoso", "Incomodado", "Atraente", "Inquieto"], 4),
+    ("1900201M1Vuncertain.mp4", ["Submisso", "Inseguro", "Triunfante", "Atraente"], 2),
+    ("1900201M6Vappealing.mp4", ["Agradecida", "Atraente", "Dispersa", "Falsa"], 2),
+    ("2001001Y7Vmortified.mp4", ["Bondoso", "Desatento", "Envergonhado", "Assertivo"], 3),
+    ("2001001Y8Vmortified.mp4", ["Cautelosa", "Entendiada", "Aflita", "Melancólica"], 3),
+    ("2100102Y3Vguarded.mp4", ["Arrogante", "Oprimido", "Cauteloso", "Furioso"], 3),
+    ("2100102Y8Vguarded.mp4", ["Submissa", "Cautelosa", "Desgostosa", "Angustiada"], 2),
+    ("2200301M6Vdistaste.mp4", ["Ofendida", "Vigilante", "Menosprezo", "Acomodada"], 3),
+    ("2200301M7Vdistaste.mp4", ["Admirado", "Menosprezo", "Provocado", "Distraído"], 2),
+    ("2200301Y4Vdistaste.mp4", ["Lisonjeada", "Apática", "Menosprezo", "Confusa"], 3),
+    ("2300501S2Vnostalgic.mp4", ["Aliviada", "Nostálgica", "Devastada", "Calculista"], 2),
+    ("2300501S5Vnostalgic.mp4", ["Apreciando", "Julgando", "Histérico", "Nostálgico"], 4),
+    ("2300501Y5Vnostalgic.mp4", ["Negligenciado", "Revigorado", "Nostálgico", "Oprimido"], 3),
+    ("2402601M1Vreassured.mp4", ["Sedutor", "Apático", "Aliviado", "Saudosista"], 3),
+    ("2402601M8Vreassured.mp4", ["Encantada", "Aliviada", "Atenta", "Desconectada"], 2),
+    ("2402601S1Vreassured.mp4", ["Vigilante", "Aliviado", "Admirado", "Cauteloso"], 2)
+]
+
+# ======= FORMULÁRIO DEMOGRÁFICO ========
 if "formulario_preenchido" not in st.session_state:
     st.session_state.formulario_preenchido = False
 
@@ -54,67 +154,10 @@ if not st.session_state.formulario_preenchido:
     else:
         st.info("Preencha todos os campos e clique em 'Iniciar teste' para começar.")
 
-# ------------------- TESTE PRINCIPAL -------------------
+# ======= TESTE PRINCIPAL ========
 if st.session_state.formulario_preenchido:
     st.title("Cambridge Mindreading Face Task – Versão Online (Português)")
 
-    # Lista de vídeos com as opções corretas (ajustada para português)
-    videos = [
-        ("0101702M2Vresentful.mp4", ["Segura", "Amigável", "Magoada", "Atraente"], 3),
-        ("0101702M3Vresentful.mp4", ["Cansado", "Magoado", "Desconcentrado", "Angustiado"], 2),
-        ("0101702M8Vresentful.mp4", ["Confusa", "Modesta", "Magoada", "Piedosa"], 3),
-        ("0110401M1Vstern.mp4", ["Sério", "Calculista", "Assertivo", "Falso"], 1),
-        ("0110401M2Vstern.mp4", ["Angustiada", "Amigável", "Severa", "Rejeitada"], 3),
-        ("0110401S5Vstern.mp4", ["Atormentado", "Resignado", "Furioso", "Sério"], 4),
-        ("0201901S1Vgrave.mp4", ["Preocupado", "Desconcentrado", "Abandonado", "Resignado"], 1),
-        ("0201901S6Vgrave.mp4", ["Crítica", "Conformada", "Preocupada", "Sedutora"], 3),
-        ("0203501M4Vsubdued.mp4", ["Arrogante", "Desconcentrada", "Abatida", "Revigorada"], 3),
-        ("0203501Y2Vsubdued.mp4", ["Apática", "Abatida", "Eufórica", "Preocupada"], 2),
-        ("0305802M2Vexonerated.mp4", ["Aliviada", "Rejeitada", "Desconcentrada", "Abandonada"], 1),
-        ("0305802S4Vexonerated.mp4", ["Esgotada", "Aterrorizada", "Aliviada", "Frustrada"], 3),
-        ("0305802Y7Vexonerated.mp4", ["Emotivo", "Assertivo", "Sonhador", "Aliviado"], 4),
-        ("0601901S2Vuneasy.mp4", ["Opressiva", "Enérgica", "Inquieta", "Apática"], 3),
-        ("0601901S5Vuneasy.mp4", ["Acuado", "Despreocupado", "Inquieto", "Desnorteado"], 3),
-        ("0703001M4Vempathic.mp4", ["Atenta", "Empática", "Séria", "Conformada"], 2),
-        ("0703001S5Vempathic.mp4", ["Revigorado", "Conformado", "Bondoso", "Dissimulado"], 3),
-        ("0703001Y2Vempathic.mp4", ["Emocionada", "Insegura", "Histérica", "Empática"], 4),
-        ("0802202M8Vvibrant.mp4", ["Indiferente", "Atormentada", "Tensa", "Vibrante"], 4),
-        ("0802202Y4Vvibrant.mp4", ["Apavorada", "Vibrante", "Empática", "Oprimida"], 2),
-        ("0903302M1Vlured.mp4", ["Sério", "Comovido", "Sedutor", "Confuso"], 3),
-        ("0903302M2Vlured.mp4", ["Sedutora", "Revigorada", "Impaciente", "Amargurada"], 1),
-        ("0903302S2Vlured.mp4", ["Sedutora", "Indiferente", "Insegura", "Empática"], 1),
-        ("0903001M4Vadmiring.mp4", ["Submissa", "Encantada", "Chateada", "Irritada"], 2),
-        ("1004701M3Vsubservient.mp4", ["Tenso", "Desmotivado", "Submisso", "Amoroso"], 3),
-        ("1004701Y1Vsubservient.mp4", ["Acuado", "Conformado", "Submisso", "Despreocupado"], 3),
-        ("1101401M6Vappalled.mp4", ["Horrorizada", "Desatenta", "Sobrecarregada", "Acomodada"], 1),
-        ("1101401S5Vappalled.mp4", ["Arrogante", "Submisso", "Impiedoso", "Horrorizado"], 4),
-        ("1101401Y5Vappalled.mp4", ["Horrorizado", "Saudoso", "Retraído", "Cínico"], 1),
-        ("1202701M2Vconfronted.mp4", ["Séria", "Agradecida", "Acareada", "Angustiada"], 3),
-        ("1202701M8Vconfronted.mp4", ["Simpática", "Acareada", "Bondosa", "Acomodada"], 2),
-        ("1202701Y2Vconfronted.mp4", ["Surpresa", "Elogiosa", "Tranquila", "Fria"], 1),
-        ("1400901M2Vintimate.mp4", ["Atormentada", "Despreocupada", "Amorosa", "Insegura"], 3),
-        ("1400901Y2Vintimate.mp4", ["Firme", "Amorosa", "Agitada", "Apreensiva"], 2),
-        ("1700802M4Vinsincere.mp4", ["Desmotivada", "Falsa", "Chateada", "Fascinada"], 2),
-        ("1700802Y7Vinsincere.mp4", ["Angustiado", "Contraditório", "Disperso", "Falso"], 4),
-        ("1801301Y7Vrestless.mp4", ["Impiedoso", "Incomodado", "Atraente", "Inquieto"], 4),
-        ("1900201M1Vuncertain.mp4", ["Submisso", "Inseguro", "Triunfante", "Atraente"], 2),
-        ("1900201M6Vappealing.mp4", ["Agradecida", "Atraente", "Dispersa", "Falsa"], 2),
-        ("2001001Y7Vmortified.mp4", ["Bondoso", "Desatento", "Envergonhado", "Assertivo"], 3),
-        ("2001001Y8Vmortified.mp4", ["Cautelosa", "Entendiada", "Aflita", "Melancólica"], 3),
-        ("2100102Y3Vguarded.mp4", ["Arrogante", "Oprimido", "Cauteloso", "Furioso"], 3),
-        ("2100102Y8Vguarded.mp4", ["Submissa", "Cautelosa", "Desgostosa", "Angustiada"], 2),
-        ("2200301M6Vdistaste.mp4", ["Ofendida", "Vigilante", "Menosprezo", "Acomodada"], 3),
-        ("2200301M7Vdistaste.mp4", ["Admirado", "Menosprezo", "Provocado", "Distraído"], 2),
-        ("2200301Y4Vdistaste.mp4", ["Lisonjeada", "Apática", "Menosprezo", "Confusa"], 3),
-        ("2300501S2Vnostalgic.mp4", ["Aliviada", "Nostálgica", "Devastada", "Calculista"], 2),
-        ("2300501S5Vnostalgic.mp4", ["Apreciando", "Julgando", "Histérico", "Nostálgico"], 4),
-        ("2300501Y5Vnostalgic.mp4", ["Negligenciado", "Revigorado", "Nostálgico", "Oprimido"], 3),
-        ("2402601M1Vreassured.mp4", ["Sedutor", "Apático", "Aliviado", "Saudosista"], 3),
-        ("2402601M8Vreassured.mp4", ["Encantada", "Aliviada", "Atenta", "Desconectada"], 2),
-        ("2402601S1Vreassured.mp4", ["Vigilante", "Aliviado", "Admirado", "Cauteloso"], 2)
-    ]
-
-    # Embaralhe a ordem dos vídeos no início da sessão
     if "ordem" not in st.session_state:
         st.session_state.ordem = list(range(len(videos)))
         random.shuffle(st.session_state.ordem)
@@ -171,7 +214,6 @@ if st.session_state.formulario_preenchido:
         percent_acertos = 100 * acertos / total if total else 0
         percent_erros = 100 * erros / total if total else 0
 
-        # --- Classificação psicométrica conforme percentil de ERROS ---
         if percent_erros <= 14:
             nivel = "Muito Baixo – normotípico (Não levanta problemas)"
             cor = "green"
@@ -199,7 +241,6 @@ if st.session_state.formulario_preenchido:
         st.markdown(f"### **Classificação psicométrica:**")
         st.markdown(f"<span style='color:{cor}; font-size:1.4em'><b>{nivel}</b></span>", unsafe_allow_html=True)
 
-        # ANÁLISE INTERPRETATIVA DETALHADA BASEADA NO PERCENTUAL DE ERROS
         if percent_erros <= 14:
             interpretacao = """
 **Definição:**  
@@ -232,7 +273,7 @@ Nenhuma preocupação clínica. Manter rotina de desenvolvimento habitual.
 **Definição:**  
 Pontuação de erros elevada, situando-se em zona limítrofe, sugere risco clínico para dificuldades no reconhecimento de emoções e estados mentais complexos. Esse padrão pode estar associado a traços do espectro autista de alto funcionamento, especialmente àquelas manifestações mais sutis e compensadas na infância ou adolescência.  
 Indica vulnerabilidades relevantes para práticas de funcionamento social, como empatia cognitiva, reciprocidade, compreensão de nuances sociais (ironia, sarcasmo) e regulação emocional diante de situações sociais.  
-Pode refletir risco de isolamento, dificuldades na manutenção de vínculos e prejuízos adaptativos, mesmo em indivíduos com inteligência preservada e elevadas habilidades acadêmicas adequadas.
+Pode refletir risco de isolamento, dificuldades na manutenção de vínculos e prejuízos adaptativos, mesmo em indivíduos com inteligência preservada e elevadas habilidades acadêmicas e cognitivas.
 
 **Ação sugerida:**  
 Recomenda-se observação clínica sistemática e investigação aprofundada do contexto funcional e histórico de desenvolvimento.  
@@ -253,7 +294,11 @@ Indica necessidade de intervenções específicas (como programas estruturados d
         st.markdown("### **Análise Interpretativa Detalhada:**")
         st.markdown(interpretacao)
 
-        # Botão para baixar o CSV detalhado
         df = pd.DataFrame(st.session_state.respostas)
         csv = df.to_csv(index=False).encode('utf-8')
         st.download_button("Baixar respostas detalhadas (CSV)", data=csv, file_name="respostas_cambridge.csv", mime='text/csv')
+
+        # ---- SALVAR NO GOOGLE SHEETS ----
+        if "dados_demograficos" in st.session_state:
+            salvar_no_sheets(st.session_state["dados_demograficos"], st.session_state.respostas)
+
