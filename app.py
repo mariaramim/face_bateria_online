@@ -11,8 +11,8 @@ SHEET_NAME = "Página1"  # Troque se for diferente
 
 def salvar_respostas_google_sheets(dados_demograficos, respostas):
     try:
-        service_account_info = dict(st.secrets["gcp_service_account"])
-        creds = Credentials.from_service_account_info(service_account_info)
+        service_account_info = st.secrets["gcp_service_account"]
+        creds = Credentials.from_service_account_info(dict(service_account_info))
         gc = gspread.authorize(creds)
         sh = gc.open_by_key(SHEET_ID)
         worksheet = sh.worksheet(SHEET_NAME)
@@ -199,6 +199,7 @@ if st.session_state.formulario_preenchido:
         percent_acertos = 100 * acertos / total if total else 0
         percent_erros = 100 * erros / total if total else 0
 
+        # ------ CLASSIFICAÇÃO ------
         if percent_erros <= 14:
             nivel = "Muito Baixo – normotípico (Não levanta problemas)"
             cor = "green"
@@ -226,18 +227,68 @@ if st.session_state.formulario_preenchido:
         st.markdown(f"### **Classificação psicométrica:**")
         st.markdown(f"<span style='color:{cor}; font-size:1.4em'><b>{nivel}</b></span>", unsafe_allow_html=True)
 
-        # ANÁLISE INTERPRETATIVA DETALHADA BASEADA NO PERCENTUAL DE ERROS
-        # ... (se quiser, coloque aqui sua análise detalhada por faixa)
+        # ------ ANÁLISE INTERPRETATIVA DETALHADA ------
+        if percent_erros <= 14:
+            interpretacao = """
+**Definição:**  
+Desempenho muito superior no reconhecimento de emoções e estados mentais complexos, indicando habilidades sólidas para práticas de funcionamento social, como reciprocidade social, empatia, formação e manutenção de vínculos, compreensão de ironia e sarcasmo, e regulação emocional em contextos sociais.  
+Não há qualquer indício de prejuízo clínico ou necessidade de preocupação quanto à competência para o reconhecimento de emoções complexas.
 
-        sucesso, erro = salvar_respostas_google_sheets(
-            st.session_state.dados_demograficos,
-            st.session_state.respostas
-        )
-        if sucesso:
-            st.info("✅ Respostas salvas automaticamente no Google Sheets!")
+**Ação sugerida:**  
+Nenhuma intervenção ou acompanhamento necessário.
+"""
+        elif percent_erros <= 29:
+            interpretacao = """
+**Definição:**  
+Desempenho superior no reconhecimento de emoções e estados mentais complexos, indicando habilidades expressivas para práticas de funcionamento social, como reciprocidade social, empatia, formação e manutenção de vínculos, compreensão de ironia e sarcasmo, e regulação emocional em contextos sociais.  
+Não há qualquer indício de prejuízo clínico ou necessidade de preocupação quanto à competência para o reconhecimento de emoções complexas.
+
+**Ação sugerida:**  
+Nenhuma intervenção ou acompanhamento necessário.
+"""
+        elif percent_erros <= 70:
+            interpretacao = """
+**Definição:**  
+Desempenho dentro da média populacional, refletindo variação típica de reconhecimento de emoções e estados mentais complexos, indicando habilidades razoáveis para práticas de funcionamento social, como reciprocidade social, empatia, formação e manutenção de vínculos, compreensão de ironia e sarcasmo, e regulação emocional em contextos sociais.  
+Não há qualquer indício de prejuízo clínico ou necessidade de preocupação quanto à competência para o reconhecimento de emoções complexas.
+
+**Ação sugerida:**  
+Nenhuma preocupação clínica. Manter rotina de desenvolvimento habitual.
+"""
+        elif percent_erros <= 85:
+            interpretacao = """
+**Definição:**  
+Pontuação de erros elevada, situando-se em zona limítrofe, sugere risco clínico para dificuldades no reconhecimento de emoções e estados mentais complexos. Esse padrão pode estar associado a traços do espectro autista de alto funcionamento, especialmente àquelas manifestações mais sutis e compensadas na infância ou adolescência.  
+Indica vulnerabilidades relevantes para práticas de funcionamento social, como empatia cognitiva, reciprocidade, compreensão de nuances sociais (ironia, sarcasmo) e regulação emocional diante de situações sociais.  
+Pode refletir risco de isolamento, dificuldades na manutenção de vínculos e prejuízos adaptativos, mesmo em indivíduos com inteligência preservada e elevadas habilidades acadêmicas adequadas.
+
+**Ação sugerida:**  
+Recomenda-se observação clínica sistemática e investigação aprofundada do contexto funcional e histórico de desenvolvimento.  
+É importante monitorar o impacto dessas dificuldades no cotidiano, promover intervenções preventivas (como treinamento de habilidades sociais) e considerar avaliação interdisciplinar quando houver outros indicadores de risco.
+"""
         else:
-            st.warning(f"⚠️ Não foi possível salvar no Google Sheets: {erro}")
+            interpretacao = """
+**Definição:**  
+Pontuação de erros muito elevada, situada em faixa clínica, indica prejuízo expressivo e persistente no reconhecimento de emoções e estados mentais complexos.  
+Esse perfil é fortemente sugestivo de quadros do espectro autista de alto funcionamento, nos quais as dificuldades sociais se manifestam de forma mais sutil, mas com impacto importante na qualidade das interações sociais, na construção e manutenção de vínculos afetivos, na compreensão de nuances sociais (como ironia, duplo sentido e sarcasmo) e na autorregulação emocional.  
+Tais prejuízos tendem a comprometer a adaptação social e funcional, mesmo em indivíduos com desempenho intelectual preservado e boa escolaridade, podendo favorecer isolamento, mal-entendidos, sofrimento emocional e dificuldades de integração social.
 
+**Ação sugerida:**  
+Recomenda-se avaliação clínica detalhada e multidisciplinar, com foco em neurodesenvolvimento e habilidades sociais.  
+Indica necessidade de intervenções específicas (como programas estruturados de habilidades sociais, psicoterapia focal ou treinamento em teoria da mente) e pode justificar encaminhamento para serviços especializados em autismo ou dificuldades socioemocionais, visando suporte individualizado e orientação para a rede de apoio da pessoa.
+"""
+        st.markdown("---")
+        st.markdown("### **Análise Interpretativa Detalhada:**")
+        st.markdown(interpretacao)
+
+        # Botão para baixar o CSV detalhado
         df = pd.DataFrame(st.session_state.respostas)
         csv = df.to_csv(index=False).encode('utf-8')
         st.download_button("Baixar respostas detalhadas (CSV)", data=csv, file_name="respostas_cambridge.csv", mime='text/csv')
+
+        # SALVAR NO GOOGLE SHEETS
+        ok, msg = salvar_respostas_google_sheets(st.session_state.dados_demograficos, st.session_state.respostas)
+        if ok:
+            st.success("Respostas salvas no Google Sheets com sucesso!")
+        else:
+            st.warning(f"⚠️ Não foi possível salvar no Google Sheets: {msg}")
