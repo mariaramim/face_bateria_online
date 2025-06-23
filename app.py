@@ -1,3 +1,9 @@
+try:
+    service_account_info = st.secrets["gcp_service_account"]
+    st.write(service_account_info)  # Teste, remova depois
+except Exception as e:
+    st.error(f"Erro ao acessar secrets: {e}")
+    st.stop()
 import streamlit as st
 import random
 import os
