@@ -1,23 +1,9 @@
 import streamlit as st
-try:
-    service_account_info = st.secrets["gcp_service_account"]
-    st.write("Conexão com segredos OK!")
-except Exception as e:
-    st.error(f"Erro ao acessar secrets: {e}")
-    st.stop()
-try:
-    service_account_info = st.secrets["gcp_service_account"]
-    st.write(service_account_info)  # Teste, remova depois
-except Exception as e:
-    st.error(f"Erro ao acessar secrets: {e}")
-    st.stop()
-import streamlit as st
 import random
 import os
 import pandas as pd
 from google.oauth2.service_account import Credentials
 import gspread
-
 # ===================== TESTE DE CONEXÃO GOOGLE SHEETS =====================
 SHEET_ID = "1LuLxwskv_jrwOHTRmOKKeceI7WpzeTCIauCPUwhueUU"
 SHEET_NAME = "Página1"
