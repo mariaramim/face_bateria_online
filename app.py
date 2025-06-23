@@ -1,3 +1,14 @@
+try:
+    service_account_info = st.secrets["gcp_service_account"]
+    scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+    creds = Credentials.from_service_account_info(dict(service_account_info), scopes=scopes)
+    gc = gspread.authorize(creds)
+    sh = gc.open_by_key(SHEET_ID)
+    st.write("Conectado à planilha:", sh.title)
+    worksheet = sh.worksheet(SHEET_NAME)
+    st.write("Conectado à worksheet:", worksheet.title)
+except Exception as e:
+    st.error(f"Erro de conexão: {e}")
 # --- Seus imports
 import streamlit as st
 import random
@@ -36,7 +47,8 @@ SHEET_NAME = "Página1"  # Troque se for diferente
 def salvar_respostas_google_sheets(dados_demograficos, respostas):
     try:
         service_account_info = st.secrets["gcp_service_account"]
-        creds = Credentials.from_service_account_info(dict(service_account_info))
+        scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+        creds = Credentials.from_service_account_info(dict(service_account_info), scopes=scopes)
         gc = gspread.authorize(creds)
         sh = gc.open_by_key(SHEET_ID)
         worksheet = sh.worksheet(SHEET_NAME)
