@@ -1,3 +1,10 @@
+import streamlit as st
+try:
+    service_account_info = st.secrets["gcp_service_account"]
+    st.write("Conexão com segredos OK!")
+except Exception as e:
+    st.error(f"Erro ao acessar secrets: {e}")
+    st.stop()
 try:
     service_account_info = st.secrets["gcp_service_account"]
     st.write(service_account_info)  # Teste, remova depois
