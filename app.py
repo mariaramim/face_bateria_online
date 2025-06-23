@@ -1,3 +1,27 @@
+# --- Seus imports
+import streamlit as st
+import random
+import os
+import pandas as pd
+from google.oauth2.service_account import Credentials
+import gspread
+
+# --- Bloco de teste de conexão Google Sheets
+SHEET_ID = "1LuLxwskv_jrwOHTRmOKKeceI7WpzeTCIauCPUwhueUU"
+SHEET_NAME = "Página1"
+
+try:
+    service_account_info = st.secrets["gcp_service_account"]
+    creds = Credentials.from_service_account_info(dict(service_account_info))
+    gc = gspread.authorize(creds)
+    sh = gc.open_by_key(SHEET_ID)
+    st.write("Conectado à planilha:", sh.title)
+    worksheet = sh.worksheet(SHEET_NAME)
+    st.write("Conectado à worksheet:", worksheet.title)
+except Exception as e:
+    st.error(f"Erro de conexão: {e}")
+
+# --- Aqui começa seu código normal...
 import streamlit as st
 import random
 import os
