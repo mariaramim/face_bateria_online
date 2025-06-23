@@ -1,49 +1,27 @@
+import streamlit as st
+import random
+import os
+import pandas as pd
+from google.oauth2.service_account import Credentials
+import gspread
+
+# ===================== TESTE DE CONEXÃO GOOGLE SHEETS =====================
+SHEET_ID = "1LuLxwskv_jrwOHTRmOKKeceI7WpzeTCIauCPUwhueUU"
+SHEET_NAME = "Página1"
+
 try:
     service_account_info = st.secrets["gcp_service_account"]
     scopes = ["https://www.googleapis.com/auth/spreadsheets"]
     creds = Credentials.from_service_account_info(dict(service_account_info), scopes=scopes)
     gc = gspread.authorize(creds)
     sh = gc.open_by_key(SHEET_ID)
-    st.write("Conectado à planilha:", sh.title)
+    st.success(f"Conectado à planilha: {sh.title}")
     worksheet = sh.worksheet(SHEET_NAME)
-    st.write("Conectado à worksheet:", worksheet.title)
-except Exception as e:
-    st.error(f"Erro de conexão: {e}")
-# --- Seus imports
-import streamlit as st
-import random
-import os
-import pandas as pd
-from google.oauth2.service_account import Credentials
-import gspread
-
-# --- Bloco de teste de conexão Google Sheets
-SHEET_ID = "1LuLxwskv_jrwOHTRmOKKeceI7WpzeTCIauCPUwhueUU"
-SHEET_NAME = "Página1"
-
-try:
-    service_account_info = st.secrets["gcp_service_account"]
-    creds = Credentials.from_service_account_info(dict(service_account_info))
-    gc = gspread.authorize(creds)
-    sh = gc.open_by_key(SHEET_ID)
-    st.write("Conectado à planilha:", sh.title)
-    worksheet = sh.worksheet(SHEET_NAME)
-    st.write("Conectado à worksheet:", worksheet.title)
+    st.info(f"Conectado à worksheet: {worksheet.title}")
 except Exception as e:
     st.error(f"Erro de conexão: {e}")
 
-# --- Aqui começa seu código normal...
-import streamlit as st
-import random
-import os
-import pandas as pd
-from google.oauth2.service_account import Credentials
-import gspread
-
-# ------------- GOOGLE SHEETS -------------
-SHEET_ID = "1LuLxwskv_jrwOHTRmOKKeceI7WpzeTCIauCPUwhueUU"
-SHEET_NAME = "Página1"  # Troque se for diferente
-
+# ===================== FUNÇÃO DE SALVAR NO GOOGLE SHEETS =====================
 def salvar_respostas_google_sheets(dados_demograficos, respostas):
     try:
         service_account_info = st.secrets["gcp_service_account"]
@@ -70,7 +48,7 @@ def salvar_respostas_google_sheets(dados_demograficos, respostas):
     except Exception as e:
         return False, str(e)
 
-# ------------------- FORMULÁRIO DEMOGRÁFICO INICIAL -------------------
+# ===================== FORMULÁRIO DEMOGRÁFICO =====================
 if "formulario_preenchido" not in st.session_state:
     st.session_state.formulario_preenchido = False
 
@@ -119,7 +97,7 @@ if not st.session_state.formulario_preenchido:
     else:
         st.info("Preencha todos os campos e clique em 'Iniciar teste' para começar.")
 
-# ------------------- TESTE PRINCIPAL -------------------
+# ===================== TESTE PRINCIPAL =====================
 if st.session_state.formulario_preenchido:
     st.title("Cambridge Mindreading Face Task – Versão Online (Português)")
 
