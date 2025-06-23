@@ -148,7 +148,7 @@ if not st.session_state.formulario_preenchido:
                 "renda": renda
             }
             st.success("Dados registrados com sucesso! O teste irá começar.")
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("Por favor, preencha todos os campos obrigatórios antes de iniciar o teste.")
     else:
