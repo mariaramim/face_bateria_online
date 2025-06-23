@@ -14,9 +14,7 @@ try:
     creds = Credentials.from_service_account_info(dict(service_account_info), scopes=scopes)
     gc = gspread.authorize(creds)
     sh = gc.open_by_key(SHEET_ID)
-    st.success(f"Conectado à planilha: {sh.title}")
     worksheet = sh.worksheet(SHEET_NAME)
-    st.info(f"Conectado à worksheet: {worksheet.title}")
 except Exception as e:
     st.error(f"Erro de conexão: {e}")
 
