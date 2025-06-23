@@ -301,4 +301,3 @@ Indica necessidade de intervenções específicas (como programas estruturados d
         # ---- SALVAR NO GOOGLE SHEETS ----
         if "dados_demograficos" in st.session_state:
             salvar_no_sheets(st.session_state["dados_demograficos"], st.session_state.respostas)
-
